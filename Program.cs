@@ -1,14 +1,25 @@
 using System.Text;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("Jwt:Secret is required");
+var publicKeyPath = builder.Configuration["Jwt:PublicKeyPath"]
+    ?? throw new InvalidOperationException("Jwt:PublicKeyPath configuration is required");
+
+var resolvedJwtPublicKeyPath = Path.IsPathRooted(publicKeyPath)
+    ? publicKeyPath
+    : Path.Combine(builder.Environment.ContentRootPath, publicKeyPath);
+
+var jwtPublicKeyPem = File.ReadAllText(resolvedJwtPublicKeyPath);
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "portfolio-server";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:4200", "http://localhost:5173", "http://localhost:8000" };
+
+var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+ec.ImportFromPem(jwtPublicKeyPem);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -16,7 +27,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            IssuerSigningKey = new ECDsaSecurityKey(ec),
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer,
             ValidateAudience = false,
