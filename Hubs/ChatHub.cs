@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.SignalR;
+using StackExchange.Redis;
+using System.Text.Json;
 
 [Authorize]
 public class ChatHub : Hub

@@ -1,7 +1,5 @@
-using System.Text;
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +19,15 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 ec.ImportFromPem(jwtPublicKeyPem);
 
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+    ?? throw new InvalidOperationException("Redis:ConnectionString configuration is required");
+var redisDatabaseIndex = builder.Configuration.GetValue<int>("Redis:DatabaseIndex", 1);
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(redisDatabaseIndex));
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -28,6 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new ECDsaSecurityKey(ec),
+            ValidAlgorithms = new[] { SecurityAlgorithms.EcdsaSha256 },
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer,
             ValidateAudience = false,
