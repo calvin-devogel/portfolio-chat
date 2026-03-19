@@ -4,8 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>portfolio-chat</AssemblyName>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>_</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>

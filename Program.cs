@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +56,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if(!string.IsNullOrEmpty(token) && path.StartsWithSegments("/chathub"))
                     context.Token = token;
                 return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("JwtBearer");
+                logger.LogError(
+                    context.Exception,
+                    "JWT Authentication failed: {ExceptionType}",
+                    context.Exception.GetType().Name
+                    );
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("JwtBearer");
+                logger.LogWarning(
+                    "JWT challenge issued: Error={Error}, Description={Description}",
+                    context.Error, context.ErrorDescription);
+                return Task.CompletedTask;
             }
         };
     });
@@ -68,6 +94,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+var db = app.Services.GetRequiredService<IDatabase>();
+await db.KeyDeleteAsync("chat:active_users");
 
 app.UseCors("PortfolioPolicy");
 app.UseAuthentication();
