@@ -1,37 +1,42 @@
 using StackExchange.Redis;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-using PortfolioChat.Services.Auth;
-using PortfolioChat.Services.Config;
-
-var builder = WebApplication.CreateBuilder(args);
-
-var configService = new ConfigService(builder.Configuration, builder.Environment);
-builder.Services.AddSingleton(configService);
-
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(configService.RedisConnectionString));
-builder.Services.AddSingleton(sp =>
-    sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(configService.RedisDatabaseIndex));
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+namespace PortfolioChat;
+public class Program
+{
+    public static async Task Main(string[] args)
     {
-        var authService = new AuthService(configService);
-        options = authService.GetJwtOptions();
-    });
+        var logger = new Services.LogService(new LoggerFactory().CreateLogger<Services.LogService>());
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthorization();
-builder.Services.AddSignalR();
-builder.Services.AddCors(options => options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
+        var configService = new Services.ConfigService(builder.Configuration, builder.Environment);
+        builder.Services.AddSingleton(configService);
 
-var app = builder.Build();
-var db = app.Services.GetRequiredService<IDatabase>();
-await db.KeyDeleteAsync("chat:active_users");
+        builder.Services.AddSingleton<IConnectionMultiplexer>(
+            ConnectionMultiplexer.Connect(configService.RedisConnectionString));
+        builder.Services.AddSingleton(sp =>
+            sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(configService.RedisDatabaseIndex));
 
-app.UseCors("PortfolioPolicy");
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapHub<ChatHub>("/chathub");
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                var authService = new Services.AuthService(configService);
+                options = authService.GetJwtOptions();
+            });
 
-app.Run();
+        builder.Services.AddAuthorization();
+        builder.Services.AddSignalR();
+        builder.Services.AddCors(options => options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
+
+        var app = builder.Build();
+        var db = app.Services.GetRequiredService<IDatabase>();
+        await db.KeyDeleteAsync("chat:active_users");
+
+        app.UseCors("PortfolioPolicy");
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapHub<ChatHub>("/chathub");
+
+        app.Run();
+    }
+}

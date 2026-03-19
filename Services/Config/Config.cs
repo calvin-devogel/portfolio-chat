@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
-namespace PortfolioChat.Services.Config;
-public partial class ConfigService
+namespace PortfolioChat.Services;
+public class ConfigService
 {
     public readonly string _jwtPublicKeyPem;
     public readonly string _jwtIssuer;

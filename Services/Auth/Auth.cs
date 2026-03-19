@@ -2,14 +2,14 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace PortfolioChat.Services.Auth;
+namespace PortfolioChat.Services;
 public class AuthService
 {
     private readonly ECDsaSecurityKey _key;
     private readonly string _issuer;
     private readonly JwtBearerOptions _jwtOptions;
 
-    public AuthService(Config.ConfigService config)
+    public AuthService(ConfigService config)
     {
         var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         ec.ImportFromPem(config.JwtPublicKeyPem);
