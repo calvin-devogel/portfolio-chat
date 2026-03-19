@@ -4,13 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>portfolio-chat</AssemblyName>
     <Nullable>enable</Nullable>
-    <RootNamespace>_</RootNamespace>
+    <RootNamespace>PortfolioChat</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.12.4" />
   </ItemGroup>
 
 </Project>
