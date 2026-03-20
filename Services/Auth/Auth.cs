@@ -20,6 +20,7 @@ public class AuthService
         {
             TokenValidationParameters = new TokenValidationParameters
             {
+                NameClaimType = "name",
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = _key,
                 ValidAlgorithms = new[] { SecurityAlgorithms.EcdsaSha256 },
@@ -67,4 +68,20 @@ public class AuthService
     }
 
     public JwtBearerOptions GetJwtOptions() => _jwtOptions;
+    public void ConfigureJwtOptions(JwtBearerOptions options)
+    {
+        options.TokenValidationParameters = _jwtOptions.TokenValidationParameters;
+        options.Events = _jwtOptions.Events;
+    }
+}
+
+public static class AuthServiceExtensions
+{
+    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config)
+    {
+        var authService = new AuthService(config);
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options => authService.ConfigureJwtOptions(options));
+        return services;
+    }
 }

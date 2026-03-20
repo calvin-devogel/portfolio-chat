@@ -2,9 +2,6 @@ using StackExchange.Redis;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 
 [Authorize]
 public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
@@ -19,6 +16,8 @@ public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+        logger.LogInformation("Received message from {UserId} ({UserName}): {Message}", userId, userName, message);
+
         var payload = JsonSerializer.Serialize(new { userId, username = userName, text = message, timestamp });
 
         await redis.ListLeftPushAsync(MessagesKey, payload);
@@ -29,7 +28,8 @@ public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var userId = Context.UserIdentifier ?? "Unknown";
+        var userId = Context.UserIdentifier
+            ?? throw new InvalidOperationException("UserIdentifier is required for authentication");
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         logger.LogInformation("User connected: {UserId} ({UserName})", userId, userName);
 
@@ -53,7 +53,8 @@ public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var userId = Context.UserIdentifier ?? Context.ConnectionId;
+        var userId = Context.UserIdentifier ?? 
+            throw new InvalidOperationException("UserIdentifier is required for authentication");
         if (exception is not null)
             logger.LogError(exception, "User disconnected with error: {UserId}", userId);
         else
