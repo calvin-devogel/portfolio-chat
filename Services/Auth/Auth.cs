@@ -8,13 +8,15 @@ public class AuthService
     private readonly ECDsaSecurityKey _key;
     private readonly string _issuer;
     private readonly JwtBearerOptions _jwtOptions;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(ConfigService config)
+    public AuthService(ConfigService config, ILogger<AuthService> logger)
     {
         var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         ec.ImportFromPem(config.JwtPublicKeyPem);
         this._key = new ECDsaSecurityKey(ec);
         this._issuer = config.JwtIssuer;
+        this._logger = logger;
 
         this._jwtOptions = new JwtBearerOptions
         {
@@ -42,10 +44,7 @@ public class AuthService
                 },
                 OnAuthenticationFailed = context =>
                 {
-                    var logger = context.HttpContext.RequestServices
-                        .GetRequiredService<ILoggerFactory>()
-                        .CreateLogger("JwtBearer");
-                    logger.LogError(
+                    _logger.LogError(
                         context.Exception,
                         "JWT authentication failed: {ExceptionType}",
                         context.Exception.GetType().Name
@@ -54,10 +53,7 @@ public class AuthService
                 },
                 OnChallenge = context =>
                 {
-                    var logger = context.HttpContext.RequestServices
-                        .GetRequiredService<ILoggerFactory>()
-                        .CreateLogger("JwtBearer");
-                    logger.LogWarning(
+                    _logger.LogWarning(
                         "JWT challenge issued: Error={Error}, Description={Description}",
                         context.Error, context.ErrorDescription
                     );
@@ -68,20 +64,23 @@ public class AuthService
     }
 
     public JwtBearerOptions GetJwtOptions() => _jwtOptions;
-    public void ConfigureJwtOptions(JwtBearerOptions options)
+    public JwtBearerOptions ConfigureJwtOptions()
     {
+        var options = new JwtBearerOptions();
         options.TokenValidationParameters = _jwtOptions.TokenValidationParameters;
         options.Events = _jwtOptions.Events;
+
+        return options;
     }
 }
 
 public static class AuthServiceExtensions
 {
-    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config)
+    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config, ILogger<AuthService> logger)
     {
-        var authService = new AuthService(config);
+        var authService = new AuthService(config, logger);
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options => authService.ConfigureJwtOptions(options));
+            .AddJwtBearer(options => authService.ConfigureJwtOptions());
         return services;
     }
 }

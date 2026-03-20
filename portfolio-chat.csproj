@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>PortfolioChat</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);portfolio-chat.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

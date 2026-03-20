@@ -6,15 +6,16 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var logger = new LogService(new LoggerFactory().CreateLogger<LogService>());
+        var authLogger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<AuthService>();
+        var valkeyLogger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ValkeyService>();
         var builder = WebApplication.CreateBuilder(args);
 
         var configService = new ConfigService(builder.Configuration, builder.Environment);
         builder.Services.AddSingleton(configService);
 
-        builder.Services.AddValkeyService(configService);
+        builder.Services.AddValkeyService(configService, valkeyLogger);
 
-        builder.Services.AddAuthService(configService);
+        builder.Services.AddAuthService(configService, authLogger);
 
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();
