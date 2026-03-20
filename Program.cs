@@ -1,5 +1,6 @@
 using StackExchange.Redis;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using PortfolioChat.Services;
 
 namespace PortfolioChat;
 public class Program
@@ -12,11 +13,7 @@ public class Program
         var configService = new Services.ConfigService(builder.Configuration, builder.Environment);
         builder.Services.AddSingleton(configService);
 
-        builder.Services.AddSingleton<IConnectionMultiplexer>(
-            ConnectionMultiplexer.Connect(configService.RedisConnectionString));
-        builder.Services.AddSingleton(sp =>
-            sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(configService.RedisDatabaseIndex));
-
+        builder.Services.AddValkeyService(configService);
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
