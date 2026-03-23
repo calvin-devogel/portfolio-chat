@@ -20,9 +20,12 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
 
         builder.ConfigureServices(services =>
         {
-            services.AddAuthentication(TestAuthHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
-                    TestAuthHandler.SchemeName, _ => { });
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+            }).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                TestAuthHandler.SchemeName, _ => { });
 
             var redisDescriptors = services
                 .Where(d => d.ServiceType == typeof(IConnectionMultiplexer)

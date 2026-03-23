@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 
 namespace portfolio_chat.Tests;
@@ -7,11 +8,14 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
 {
     private readonly ChatHubFixture _fixture;
     private readonly IDatabase _db;
+    private string? _testToken;
 
     public ChatHubTests(ChatHubFixture fixture)
     {
         _fixture = fixture;
         _db = fixture.Factory.Services.GetRequiredService<IDatabase>();
+        // In a real test, you would generate a valid JWT token here. For simplicity, we'll just use a placeholder string.
+        _testToken = "test-jwt-token";
     }
 
     public async ValueTask InitializeAsync()
@@ -30,12 +34,12 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
         TestAuthHandler.TestUserName = userName;
 
         return new HubConnectionBuilder()
-            .withUrl(
+            .WithUrl(
                 $"{server.BaseAddress}chathub",
                 options =>
                 {
                     options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-                    options.AccessTokenProvider = () => Task.FromResult("test-token");
+                    options.AccessTokenProvider = () => Task.FromResult(_testToken);
                 })
             .Build();
     }
@@ -45,11 +49,11 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     {
         var connection = CreateHubConnection("user-1", "Alice");
 
-        await connection.StartAsync();
+        await connection.StartAsync(TestContext.Current.CancellationToken);
 
         var name = await _db.HashGetAsync("chat:active_users", "user-1");
         Assert.Equal("Alice", name.ToString());
 
-        await connection.StopAsync();
+        await connection.StopAsync(TestContext.Current.CancellationToken);
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 
 namespace portfolio_chat.Tests;
