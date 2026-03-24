@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
 namespace PortfolioChat.Services;
+
 public class ConfigService
 {
     public readonly string _jwtPublicKeyPem;
@@ -16,7 +17,7 @@ public class ConfigService
             ?? throw new InvalidOperationException(
                 "Jwt:PublicKeyPath configuration is required"
                 );
-        
+
         var resolvedJwtPublicKeyPath = Path.IsPathRooted(publicKeyPath)
             ? publicKeyPath
             : Path.Combine(environment.ContentRootPath, publicKeyPath);
@@ -32,19 +33,19 @@ public class ConfigService
         _redisDatabaseIndex = configuration.GetValue<int>("Redis:DatabaseIndex", 1);
 
         _corsOptions = new CorsOptions();
-        _corsOptions.AddPolicy("PortfolioPolicy", policy => 
+        _corsOptions.AddPolicy("PortfolioPolicy", policy =>
             policy.WithOrigins(_allowedOrigins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials());
-                
+
     }
 
     public string JwtPublicKeyPem => _jwtPublicKeyPem;
     public string JwtIssuer => _jwtIssuer;
     public string[] AllowedOrigins => _allowedOrigins;
     public string RedisConnectionString => _redisConnectionString;
-    public int RedisDatabaseIndex => _redisDatabaseIndex;   
+    public int RedisDatabaseIndex => _redisDatabaseIndex;
     public CorsOptions CorsOptions => _corsOptions;
     public CorsPolicy GetCorsPolicy(string policyName) => _corsOptions.GetPolicy(policyName)
         ?? throw new InvalidOperationException($"CORS policy '{policyName}' not found");

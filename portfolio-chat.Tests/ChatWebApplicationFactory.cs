@@ -17,7 +17,7 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
         builder.UseSetting("Redis:DatabaseIndex", TestDatabaseIndex.ToString());
 
         var tempKeyPath = Path.Combine(Path.GetTempPath(), "test-ecdsa-public-key.pem");
-        if(!File.Exists(tempKeyPath))
+        if (!File.Exists(tempKeyPath))
         {
             using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             var pubKeyBytes = ec.ExportSubjectPublicKeyInfo();
@@ -41,10 +41,10 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
                 .Where(d => d.ServiceType == typeof(IConnectionMultiplexer)
                     || d.ServiceType == typeof(IDatabase))
                 .ToList();
-            
+
             foreach (var d in redisDescriptors)
                 services.Remove(d);
-            
+
             services.AddSingleton<IConnectionMultiplexer>(
                 ConnectionMultiplexer.Connect("localhost:6379"));
             services.AddSingleton(sp =>

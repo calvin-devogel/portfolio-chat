@@ -22,7 +22,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
 
     [LoggerMessage(Level = LogLevel.Error, Message = "User disconnected with error: {UserId}")]
     private partial void LogUserDisconnectedWithError(string userId);
-    
+
     public async Task SendMessage(string message)
     {
         var userId = Context.UserIdentifier ?? "Unknown";
@@ -70,7 +70,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var userId = Context.UserIdentifier ?? 
+        var userId = Context.UserIdentifier ??
             throw new InvalidOperationException("UserIdentifier is required for authentication");
         if (exception is not null)
             LogUserDisconnectedWithError(userId);

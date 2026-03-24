@@ -98,7 +98,7 @@ public static class AuthServiceExtensions
             new AuthService(config, sp.GetRequiredService<ILogger<AuthService>>()));
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(); // add dummy options, configured below
-        
+
         // Then we configure the JWT options using the instance of AuthService we just created.
         // This ensures that the logger is available for any logging within the configuration process.
         services.AddSingleton<IConfigureOptions<JwtBearerOptions>>(sp =>

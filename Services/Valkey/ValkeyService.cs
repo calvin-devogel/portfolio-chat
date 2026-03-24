@@ -22,7 +22,7 @@ public static class ValkeyServiceExtensions
             sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(config.RedisDatabaseIndex));
         services.AddSingleton(sp => new ValkeyService(
             sp.GetRequiredService<IConnectionMultiplexer>(), config));
-        
+
         return services;
     }
 }
