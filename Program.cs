@@ -1,37 +1,58 @@
 using StackExchange.Redis;
 using PortfolioChat.Services;
 using Microsoft.AspNetCore.SignalR;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 namespace PortfolioChat;
+
 public class Program
 {
     public static async Task Main(string[] args)
     {
-        var authLogger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<AuthService>();
-        var valkeyLogger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ValkeyService>();
-        var builder = WebApplication.CreateBuilder(args);
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .CreateBootstrapLogger();
+        try
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-        var configService = new ConfigService(builder.Configuration, builder.Environment);
-        builder.Services.AddSingleton(configService);
+            builder.Host.UseSerilog((context, services, configuration) => configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .Enrich.FromLogContext()
+                .WriteTo.Console(new CompactJsonFormatter()));
 
-        builder.Services.AddValkeyService(configService, valkeyLogger);
+            var configService = new ConfigService(builder.Configuration, builder.Environment);
+            builder.Services.AddSingleton(configService);
 
-        builder.Services.AddAuthService(configService, authLogger);
+            builder.Services.AddValkeyService(configService);
+            builder.Services.AddAuthService(configService);
 
-        builder.Services.AddAuthorization();
-        builder.Services.AddSignalR();
-        builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
-        builder.Services.AddCors(options => options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
+            builder.Services.AddAuthorization();
+            builder.Services.AddSignalR();
+            builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+            builder.Services.AddCors(options =>
+                options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
 
-        var app = builder.Build();
-        var db = app.Services.GetRequiredService<IDatabase>();
-        await db.KeyDeleteAsync("chat:active_users");
+            var app = builder.Build();
+            var db = app.Services.GetRequiredService<IDatabase>();
+            app.Logger.LogInformation("Clearing active users from Redis...");
+            await db.KeyDeleteAsync("chat:active_users");
 
-        app.UseCors("PortfolioPolicy");
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.MapHub<ChatHub>("/chathub");
+            app.UseCors("PortfolioPolicy");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapHub<ChatHub>("/chathub");
 
-        app.Run();
+            app.Run();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Application terminated unexpectedly");
+        }
+        finally
+        {
+            await Log.CloseAndFlushAsync();
+        }
     }
 }

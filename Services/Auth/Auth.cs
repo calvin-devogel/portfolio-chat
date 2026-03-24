@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using Microsoft.Extensions.Options;
 
 namespace PortfolioChat.Services;
 
@@ -80,24 +81,30 @@ public class AuthService
         };
     }
 
-    public JwtBearerOptions GetJwtOptions() => _jwtOptions;
-    public JwtBearerOptions ConfigureJwtOptions()
+    public void ConfigureJwtOptions(JwtBearerOptions options)
     {
-        var options = new JwtBearerOptions();
         options.TokenValidationParameters = _jwtOptions.TokenValidationParameters;
         options.Events = _jwtOptions.Events;
-
-        return options;
     }
 }
 
 public static class AuthServiceExtensions
 {
-    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config, ILogger<AuthService> logger)
+    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config)
     {
-        var authService = new AuthService(config, logger);
+        // We create the AuthService instance here to ensure the logger is properly injected and available
+        // for configuration. This allows us to log any important information during the setup of JWT options.
+        services.AddSingleton(sp =>
+            new AuthService(config, sp.GetRequiredService<ILogger<AuthService>>()));
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options => authService.ConfigureJwtOptions());
+            .AddJwtBearer(); // add dummy options, configured below
+        
+        // Then we configure the JWT options using the instance of AuthService we just created.
+        // This ensures that the logger is available for any logging within the configuration process.
+        services.AddSingleton<IConfigureOptions<JwtBearerOptions>>(sp =>
+            new ConfigureNamedOptions<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme,
+                options => sp.GetRequiredService<AuthService>().ConfigureJwtOptions(options)));
         return services;
     }
 }
