@@ -1,5 +1,6 @@
 using StackExchange.Redis;
 using PortfolioChat.Services;
+using Microsoft.AspNetCore.SignalR;
 
 namespace PortfolioChat;
 public class Program
@@ -19,6 +20,7 @@ public class Program
 
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();
+        builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
         builder.Services.AddCors(options => options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
 
         var app = builder.Build();

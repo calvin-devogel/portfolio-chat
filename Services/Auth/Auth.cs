@@ -1,8 +1,24 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 namespace PortfolioChat.Services;
+
+public class CustomUserIdProvider : IUserIdProvider
+{
+    public string? GetUserId(HubConnectionContext connection)
+    {
+        var subClaim = connection.User?.FindFirst("sub")?.Value;
+        if (!string.IsNullOrEmpty(subClaim))
+        {
+            return subClaim;
+        }
+
+        return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+}
 public class AuthService
 {
     private readonly ECDsaSecurityKey _key;
@@ -23,6 +39,7 @@ public class AuthService
             TokenValidationParameters = new TokenValidationParameters
             {
                 NameClaimType = "name",
+                RoleClaimType = "role",
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = _key,
                 ValidAlgorithms = new[] { SecurityAlgorithms.EcdsaSha256 },

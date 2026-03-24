@@ -33,7 +33,7 @@ public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         logger.LogInformation("User connected: {UserId} ({UserName})", userId, userName);
 
-        await redis.HashSetAsync(UsersKey, userId, userName);
+        await redis.SetAddAsync($"chat:active_users:{userId}", Context.ConnectionId);
 
         var entries = await redis.HashGetAllAsync(UsersKey);
         var activeUsers = entries.Select(e => new { userId = e.Name.ToString(), username = e.Value.ToString() });
@@ -60,7 +60,7 @@ public class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
         else
             logger.LogInformation("User disconnected: {UserId}", userId);
 
-        await redis.HashDeleteAsync(UsersKey, userId);
+        await redis.SetRemoveAsync($"chat:active_users:{userId}", Context.ConnectionId);
         await Clients.Others.SendAsync("UserLeft", userId);
 
         await base.OnDisconnectedAsync(exception);

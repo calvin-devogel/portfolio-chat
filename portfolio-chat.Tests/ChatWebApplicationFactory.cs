@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using System.Security.Cryptography;
 
 namespace portfolio_chat.Tests;
 
@@ -15,7 +16,16 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
         builder.UseSetting("Redis:ConnectionString", "localhost:6379");
         builder.UseSetting("Redis:DatabaseIndex", TestDatabaseIndex.ToString());
 
-        builder.UseSetting("Jwt:PublicKeyPath", "unused");
+        var tempKeyPath = Path.Combine(Path.GetTempPath(), "test-ecdsa-public-key.pem");
+        if(!File.Exists(tempKeyPath))
+        {
+            using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var pubKeyBytes = ec.ExportSubjectPublicKeyInfo();
+            var pemKey = new string(PemEncoding.Write("PUBLIC KEY", pubKeyBytes));
+            File.WriteAllText(tempKeyPath, pemKey);
+        }
+
+        builder.UseSetting("Jwt:PublicKeyPath", tempKeyPath);
         builder.UseSetting("Jwt:Issuer", "test-issuer");
 
         builder.ConfigureServices(services =>
