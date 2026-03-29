@@ -4,30 +4,26 @@ using StackExchange.Redis;
 
 namespace portfolio_chat.Tests;
 
-public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
-{
+public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime {
     private readonly ChatHubFixture _fixture;
     private readonly IDatabase _db;
     private string? _testToken;
 
-    public ChatHubTests(ChatHubFixture fixture)
-    {
+    public ChatHubTests(ChatHubFixture fixture) {
         _fixture = fixture;
         _db = fixture.Factory.Services.GetRequiredService<IDatabase>();
         // In a real test, you would generate a valid JWT token here. For simplicity, we'll just use a placeholder string.
         _testToken = "test-jwt-token";
     }
 
-    public async ValueTask InitializeAsync()
-    {
+    public async ValueTask InitializeAsync() {
         await _db.KeyDeleteAsync("chat:active_users");
         await _db.KeyDeleteAsync("chat:messages");
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-    private HubConnection CreateHubConnection(string userId = "user-1", string userName = "Charlie Chatter")
-    {
+    private HubConnection CreateHubConnection(string userId = "user-1", string userName = "Charlie Chatter") {
         var server = _fixture.Factory.Server;
 
         TestAuthHandler.TestUserId = userId;
@@ -36,8 +32,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
         return new HubConnectionBuilder()
             .WithUrl(
                 $"{server.BaseAddress}chathub",
-                options =>
-                {
+                options => {
                     options.HttpMessageHandlerFactory = _ => server.CreateHandler();
                     options.AccessTokenProvider = () => Task.FromResult(_testToken);
                 })
@@ -45,8 +40,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Connect_AddsUserToActiveUsers()
-    {
+    public async Task Connect_AddsUserToActiveUsers() {
         var connection = CreateHubConnection("user-1", "Alice");
 
         // set up a listener to know when the server finishes processing hte connection
@@ -64,8 +58,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Disconnect_RemovesUserFromActiveUsers()
-    {
+    public async Task Disconnect_RemovesUserFromActiveUsers() {
         var connection = CreateHubConnection("user-1", "Alice");
 
         var connectedTaskCompletionSource = new TaskCompletionSource();
@@ -82,10 +75,8 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
 
         // poll for a short time until OnDisconnectedAsync completes
         bool isRemoved = false;
-        for (int i = 0; i < 10; i++)
-        {
-            if (!await _db.SetContainsAsync("chat:active_users:user-1", tempConnectionId))
-            {
+        for (int i = 0; i < 10; i++) {
+            if (!await _db.SetContainsAsync("chat:active_users:user-1", tempConnectionId)) {
                 isRemoved = true;
                 break;
             }
@@ -96,8 +87,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task SendMessage_StoresMessageInRedis()
-    {
+    public async Task SendMessage_StoresMessageInRedis() {
         var connection = CreateHubConnection("user-1", "Alice");
         await connection.StartAsync(TestContext.Current.CancellationToken);
 
@@ -115,15 +105,13 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Connect_ReceivesMessageHistory()
-    {
+    public async Task Connect_ReceivesMessageHistory() {
         await _db.ListLeftPushAsync("chat:messages", "{\"userId\":\"user-2\",\"UserName\":\"Bob\",\"text\":\"Hi Alice!\",\"timestamp\":1234567890}");
 
         var historyTaskCompletionSource = new TaskCompletionSource<object>();
         var connection = CreateHubConnection("user-1", "Alice");
 
-        connection.On<object>("MessageHistory", history =>
-        {
+        connection.On<object>("MessageHistory", history => {
             historyTaskCompletionSource.SetResult(history);
         });
 
@@ -136,8 +124,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Connect_ReceivesActiveUsers()
-    {
+    public async Task Connect_ReceivesActiveUsers() {
         var joinedUserTaskCompletionSource = new TaskCompletionSource<(string userId, string userName)>();
         var leftUserTaskCompletionSource = new TaskCompletionSource<string>();
 

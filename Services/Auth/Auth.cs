@@ -7,38 +7,31 @@ using Microsoft.Extensions.Options;
 
 namespace PortfolioChat.Services;
 
-public class CustomUserIdProvider : IUserIdProvider
-{
-    public string? GetUserId(HubConnectionContext connection)
-    {
+public class CustomUserIdProvider : IUserIdProvider {
+    public string? GetUserId(HubConnectionContext connection) {
         var subClaim = connection.User?.FindFirst("sub")?.Value;
-        if (!string.IsNullOrEmpty(subClaim))
-        {
+        if (!string.IsNullOrEmpty(subClaim)) {
             return subClaim;
         }
 
         return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     }
 }
-public class AuthService
-{
+public class AuthService {
     private readonly ECDsaSecurityKey _key;
     private readonly string _issuer;
     private readonly JwtBearerOptions _jwtOptions;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(ConfigService config, ILogger<AuthService> logger)
-    {
+    public AuthService(ConfigService config, ILogger<AuthService> logger) {
         var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         ec.ImportFromPem(config.JwtPublicKeyPem);
         this._key = new ECDsaSecurityKey(ec);
         this._issuer = config.JwtIssuer;
         this._logger = logger;
 
-        this._jwtOptions = new JwtBearerOptions
-        {
-            TokenValidationParameters = new TokenValidationParameters
-            {
+        this._jwtOptions = new JwtBearerOptions {
+            TokenValidationParameters = new TokenValidationParameters {
                 NameClaimType = "name",
                 RoleClaimType = "role",
                 ValidateIssuerSigningKey = true,
@@ -50,18 +43,15 @@ public class AuthService
                 ValidateLifetime = true,
             },
 
-            Events = new JwtBearerEvents
-            {
-                OnMessageReceived = context =>
-                {
+            Events = new JwtBearerEvents {
+                OnMessageReceived = context => {
                     var token = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
                     if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/chathub"))
                         context.Token = token;
                     return Task.CompletedTask;
                 },
-                OnAuthenticationFailed = context =>
-                {
+                OnAuthenticationFailed = context => {
                     _logger.LogError(
                         context.Exception,
                         "JWT authentication failed: {ExceptionType}",
@@ -69,8 +59,7 @@ public class AuthService
                     );
                     return Task.CompletedTask;
                 },
-                OnChallenge = context =>
-                {
+                OnChallenge = context => {
                     _logger.LogWarning(
                         "JWT challenge issued: Error={Error}, Description={Description}",
                         context.Error, context.ErrorDescription
@@ -81,17 +70,14 @@ public class AuthService
         };
     }
 
-    public void ConfigureJwtOptions(JwtBearerOptions options)
-    {
+    public void ConfigureJwtOptions(JwtBearerOptions options) {
         options.TokenValidationParameters = _jwtOptions.TokenValidationParameters;
         options.Events = _jwtOptions.Events;
     }
 }
 
-public static class AuthServiceExtensions
-{
-    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config)
-    {
+public static class AuthServiceExtensions {
+    public static IServiceCollection AddAuthService(this IServiceCollection services, ConfigService config) {
         // We create the AuthService instance here to ensure the logger is properly injected and available
         // for configuration. This allows us to log any important information during the setup of JWT options.
         services.AddSingleton(sp =>

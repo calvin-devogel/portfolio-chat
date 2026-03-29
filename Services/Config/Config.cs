@@ -2,8 +2,7 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 
 namespace PortfolioChat.Services;
 
-public class ConfigService
-{
+public class ConfigService {
     public readonly string _jwtPublicKeyPem;
     public readonly string _jwtIssuer;
     public readonly string[] _allowedOrigins;
@@ -11,8 +10,7 @@ public class ConfigService
     public readonly int _redisDatabaseIndex;
     public readonly CorsOptions _corsOptions;
 
-    public ConfigService(IConfiguration configuration, IWebHostEnvironment environment)
-    {
+    public ConfigService(IConfiguration configuration, IWebHostEnvironment environment) {
         var publicKeyPath = configuration["Jwt:PublicKeyPath"]
             ?? throw new InvalidOperationException(
                 "Jwt:PublicKeyPath configuration is required"

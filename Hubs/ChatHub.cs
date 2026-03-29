@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Serilog.Context;
 
 [Authorize]
-public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
-{
+public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     private const string UsersKey = "chat:active_users";
     private const string MessagesKey = "chat:messages";
     private const int MaxMessages = 100;
@@ -23,8 +22,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
     [LoggerMessage(Level = LogLevel.Error, Message = "User disconnected with error: {UserId}")]
     private partial void LogUserDisconnectedWithError(string userId);
 
-    public async Task SendMessage(string message)
-    {
+    public async Task SendMessage(string message) {
         var userId = Context.UserIdentifier ?? "Unknown";
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -39,15 +37,13 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
         await Clients.All.SendAsync("ReceiveMessage", userId, userName, message, timestamp);
     }
 
-    public override async Task OnConnectedAsync()
-    {
+    public override async Task OnConnectedAsync() {
         var userId = Context.UserIdentifier
             ?? throw new InvalidOperationException("UserIdentifier is required for authentication");
         var userName = Context.User?.Identity?.Name ?? "Unknown";
 
         using (LogContext.PushProperty("UserId", Context.ConnectionId))
-        using (LogContext.PushProperty("UserId", userId))
-        {
+        using (LogContext.PushProperty("UserId", userId)) {
             LogUserConnected(userId, userName);
 
             await redis.SetAddAsync($"chat:active_users:{userId}", Context.ConnectionId);
@@ -68,8 +64,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub
         }
     }
 
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
+    public override async Task OnDisconnectedAsync(Exception? exception) {
         var userId = Context.UserIdentifier ??
             throw new InvalidOperationException("UserIdentifier is required for authentication");
         if (exception is not null)

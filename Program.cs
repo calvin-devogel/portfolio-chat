@@ -6,15 +6,12 @@ using Serilog.Formatting.Compact;
 
 namespace PortfolioChat;
 
-public class Program
-{
-    public static async Task Main(string[] args)
-    {
+public class Program {
+    public static async Task Main(string[] args) {
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .CreateBootstrapLogger();
-        try
-        {
+        try {
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -46,12 +43,10 @@ public class Program
 
             app.Run();
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Log.Fatal(ex, "Application terminated unexpectedly");
         }
-        finally
-        {
+        finally {
             await Log.CloseAndFlushAsync();
         }
     }

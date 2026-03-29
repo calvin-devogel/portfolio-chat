@@ -6,8 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace portfolio_chat.Tests;
 
-public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
-{
+public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions> {
     public const string SchemeName = "TestScheme";
     public static string TestUserId { get; set; } = "test-user-id";
     public static string TestUserName { get; set; } = "TestUser";
@@ -18,8 +17,7 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
         UrlEncoder encoder)
         : base(options, logger, encoder) { }
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() {
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, TestUserId),
