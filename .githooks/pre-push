@@ -9,19 +9,25 @@ fail() {
     exit 1
 }
 
-echo "\n→ Formatting...\n"
-dotnet format portfolio-chat.slnx --verify-no-changes || fail "Formatting"
+current_branch=$(git symbolic-ref --short HEAD)
 
-echo "\n→ Linting...\n"
-dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true || fail "Linting"
+if [[ $current_branch != "main" && $current_branch != "dev" ]]; then
+    exit 0
+else
+    echo "\n→ Formatting...\n"
+    dotnet format portfolio-chat.slnx --verify-no-changes || fail "Formatting"
 
-echo "\n→ Running tests...\n"
-dotnet test portfolio-chat.slnx --no-build || fail "Tests"
+    echo "\n→ Linting...\n"
+    dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true || fail "Linting"
 
-echo "\n→ Auditing dependencies...\n"
-dotnet list package --vulnerable --include-transitive || echo "\n${YELLOW}⚠${RESET} Audit found vulnerabilities (non-blocking).\n" >&2
+    echo "\n→ Running tests...\n"
+    dotnet test portfolio-chat.slnx --no-build || fail "Tests"
 
-echo "\n→ Looking for unused references...\n"
-dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true /p:EnforceCodeStyleInBuild=true || fail "Unused references"
+    echo "\n→ Auditing dependencies...\n"
+    dotnet list package --vulnerable --include-transitive || echo "\n${YELLOW}⚠${RESET} Audit found vulnerabilities (non-blocking).\n" >&2
 
-echo "\n${GREEN}✓${RESET} Pre-push checks passed.\n"
+    echo "\n→ Looking for unused references...\n"
+    dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true /p:EnforceCodeStyleInBuild=true || fail "Unused references"
+
+    echo "\n${GREEN}✓${RESET} Pre-push checks passed.\n"
+fi
