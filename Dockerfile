@@ -1,22 +1,27 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+ARG TARGET_ARCH=x64
+
 COPY nuget.config .
 COPY portfolio-chat.csproj .
-RUN dotnet restore
+RUN dotnet restore -r linux-musl-${TARGET_ARCH}
 
 COPY . .
-RUN dotnet publish portfolio-chat.csproj -c Release -o /app/publish
+RUN dotnet publish portfolio-chat.csproj -c Release -o /app/publish \
+    -r linux-musl-${TARGET_ARCH} \
+    --self-contained true \
+    -p:PublishSingleFile=true
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM alpine:latest AS runtime
 WORKDIR /app
 
-# RUN adduser --disabled-pasword --no-create-home appuser
-# USER appuser
+RUN apk update && apk add --no-cache libgcc libstdc++ icu-libs ca-certificates
+RUN adduser -D appuser
+USER appuser
 
-COPY --from=build /app/publish .
+COPY --from=build /app/publish/portfolio-chat .
 
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-
-ENTRYPOINT ["dotnet", "portfolio-chat.dll"]
+ENTRYPOINT ["./portfolio-chat"]
