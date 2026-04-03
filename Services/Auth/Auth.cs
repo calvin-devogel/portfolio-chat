@@ -47,7 +47,7 @@ public class AuthService {
                 OnMessageReceived = context => {
                     var token = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
-                    if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/chathub"))
+                    if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/ws/chat"))
                         context.Token = token;
                     return Task.CompletedTask;
                 },

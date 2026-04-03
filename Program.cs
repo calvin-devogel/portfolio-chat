@@ -40,7 +40,7 @@ public class Program {
             app.UseCors("PortfolioPolicy");
             app.UseAuthentication();
             app.UseAuthorization();
-            app.MapHub<ChatHub>("/chathub");
+            app.MapHub<ChatHub>("/ws/chat");
 
             app.Run();
         }

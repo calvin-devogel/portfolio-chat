@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 
 ARG TARGET_ARCH=x64
@@ -11,12 +11,13 @@ COPY . .
 RUN dotnet publish portfolio-chat.csproj -c Release -o /app/publish \
     -r linux-musl-${TARGET_ARCH} \
     --self-contained true \
-    -p:PublishSingleFile=true
+    -p:PublishSingleFile=true \
+    -p:InvariantGlobalization=true
 
-FROM alpine:latest AS runtime
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine AS runtime
 WORKDIR /app
 
-RUN apk update && apk add --no-cache libgcc libstdc++ icu-libs ca-certificates
+RUN apk update && apk add --no-cache ca-certificates
 RUN adduser -D appuser
 USER appuser
 
