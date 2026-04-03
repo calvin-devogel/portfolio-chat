@@ -47,6 +47,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             LogUserConnected(userId, userName);
 
             await redis.SetAddAsync($"chat:active_users:{userId}", Context.ConnectionId);
+            await redis.HashSetAsync(UsersKey, userId, userName);
 
             var entries = await redis.HashGetAllAsync(UsersKey);
             var activeUsers = entries.Select(e => new { userId = e.Name.ToString(), username = e.Value.ToString() });
@@ -73,7 +74,11 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             LogUserDisconnected(userId);
 
         await redis.SetRemoveAsync($"chat:active_users:{userId}", Context.ConnectionId);
-        await Clients.Others.SendAsync("UserLeft", userId);
+        var remaining = await redis.SetLengthAsync($"chat:active_users:{userId}");
+        if (remaining == 0) {
+            await redis.HashDeleteAsync(UsersKey, userId);
+            await Clients.Others.SendAsync("UserLeft", userId);
+        }
 
         await base.OnDisconnectedAsync(exception);
     }
