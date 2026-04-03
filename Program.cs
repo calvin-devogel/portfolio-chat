@@ -1,58 +1,54 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
+using PortfolioChat.Services;
+using Microsoft.AspNetCore.SignalR;
+using Serilog;
+using Serilog.Formatting.Compact;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace PortfolioChat;
 
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("Jwt:Secret is required");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "portfolio-server";
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:4200", "http://localhost:5173", "http://localhost:8000" };
+public class Program {
+    public static async Task Main(string[] args) {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .CreateBootstrapLogger();
+        try {
+            var builder = WebApplication.CreateBuilder(args);
+            builder.Configuration.AddEnvironmentVariables("APP_");
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
-            ValidateAudience = false,
-            ValidateLifetime = true,
-        };
-        // SignalR sends the token as '?access_token=...'
-        // because WebSockets/SSE transports can't set custom headers
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                var token = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-                if(!string.IsNullOrEmpty(token) && path.StartsWithSegments("/chathub"))
-                    context.Token = token;
-                return Task.CompletedTask;
-            }
-        };
-    });
+            builder.Host.UseSerilog((context, services, configuration) => configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .Enrich.FromLogContext()
+                .WriteTo.Console(new CompactJsonFormatter()));
 
-builder.Services.AddAuthorization();
-builder.Services.AddSignalR();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("PortfolioPolicy", policy =>
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials());
-});
+            var configService = new ConfigService(builder.Configuration);
+            builder.Services.AddSingleton(configService);
 
-var app = builder.Build();
+            builder.Services.AddValkeyService(configService);
+            builder.Services.AddAuthService(configService);
 
-app.UseCors("PortfolioPolicy");
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapHub<ChatHub>("/chathub");
+            builder.Services.AddAuthorization();
+            builder.Services.AddSignalR();
+            builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+            builder.Services.AddCors(options =>
+                options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
 
-app.Run();
+            var app = builder.Build();
+            var db = app.Services.GetRequiredService<IDatabase>();
+            app.Logger.LogInformation("Clearing active users from Redis...");
+            await db.KeyDeleteAsync("chat:active_users");
+
+            app.UseCors("PortfolioPolicy");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapHub<ChatHub>("/ws/chat");
+
+            app.Run();
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Application terminated unexpectedly");
+        }
+        finally {
+            await Log.CloseAndFlushAsync();
+        }
+    }
+}
