@@ -10,24 +10,17 @@ public class ConfigService {
     public readonly int _redisDatabaseIndex;
     public readonly CorsOptions _corsOptions;
 
-    public ConfigService(IConfiguration configuration, IWebHostEnvironment environment) {
-        var publicKeyPath = configuration["Jwt:PublicKeyPath"]
-            ?? throw new InvalidOperationException(
-                "Jwt:PublicKeyPath configuration is required"
-                );
+    public ConfigService(IConfiguration configuration) {
 
-        var resolvedJwtPublicKeyPath = Path.IsPathRooted(publicKeyPath)
-            ? publicKeyPath
-            : Path.Combine(environment.ContentRootPath, publicKeyPath);
-
-        var jwtPublicKeyPem = File.ReadAllText(resolvedJwtPublicKeyPath);
+        var jwtPublicKeyPem = configuration["Application:JWT_PUBLIC_KEY"]
+            ?? throw new InvalidOperationException("APP_APPLICATION__JWT_PUBLIC_KEY configuration is required");
 
         _jwtPublicKeyPem = jwtPublicKeyPem;
-        _jwtIssuer = configuration["Jwt:Issuer"] ?? "portfolio-server";
-        _allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        _jwtIssuer = configuration["Application:JWT_ISSUER"] ?? "portfolio-server";
+        _allowedOrigins = configuration.GetSection("Cors:ALLOWED_ORIGINS").Get<string[]>()
             ?? new[] { "http://localhost:4200", "http://localhost:5173", "http://localhost:8000" };
-        _redisConnectionString = configuration["Redis:ConnectionString"]
-            ?? throw new InvalidOperationException("Redis:ConnectionString configuration is required");
+        _redisConnectionString = configuration["redis_uri"]
+            ?? throw new InvalidOperationException("APP_REDIS_URI is required");
         _redisDatabaseIndex = configuration.GetValue<int>("Redis:DatabaseIndex", 1);
 
         _corsOptions = new CorsOptions();

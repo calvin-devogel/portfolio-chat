@@ -13,13 +13,14 @@ public class Program {
             .CreateBootstrapLogger();
         try {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Configuration.AddEnvironmentVariables("APP_");
 
             builder.Host.UseSerilog((context, services, configuration) => configuration
                 .ReadFrom.Configuration(context.Configuration)
                 .Enrich.FromLogContext()
                 .WriteTo.Console(new CompactJsonFormatter()));
 
-            var configService = new ConfigService(builder.Configuration, builder.Environment);
+            var configService = new ConfigService(builder.Configuration);
             builder.Services.AddSingleton(configService);
 
             builder.Services.AddValkeyService(configService);
