@@ -37,7 +37,7 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
                 services.Remove(d);
 
             services.AddSingleton<IConnectionMultiplexer>(
-                ConnectionMultiplexer.Connect("localhost:6379"));
+                ConnectionMultiplexer.Connect("localhost:6379,allowAdmin=true"));
             services.AddSingleton(sp =>
                 sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(TestDatabaseIndex)
             );
