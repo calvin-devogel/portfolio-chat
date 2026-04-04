@@ -21,7 +21,7 @@ jobs:
         with:
           dotnet-version: '10.x'
       - name: Verify formatting
-        run: dotnet format --verify-no-changes
+        run: dotnet format portfolio-chat.slnx --verify-no-changes
   
   build:
     name: Build
@@ -51,7 +51,7 @@ jobs:
             ${{ runner.os }}-nuget-
       
       - name: Run tests
-        run: dotnet test --configuration Release --logger trx
+        run: dotnet test portfolio-chat.slnx --configuration Release --logger trx
   
   docker-build:
     name: Docker Build
