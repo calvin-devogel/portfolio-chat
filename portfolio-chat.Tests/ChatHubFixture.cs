@@ -17,7 +17,7 @@ public class ChatHubFixture : IAsyncLifetime {
 
     private async Task FlushTestDatabase() {
         var db = Factory.Services.GetRequiredService<IDatabase>();
-        var connectionMultiplexer = Factory.Services.GetRequiredKeyedService<IConnectionMultiplexer>("valkey");
+        var connectionMultiplexer = Factory.Services.GetRequiredService<IConnectionMultiplexer>();
         foreach (var endpoint in connectionMultiplexer.GetEndPoints()) {
             var server = connectionMultiplexer.GetServer(endpoint);
             if (!server.IsReplica) {
