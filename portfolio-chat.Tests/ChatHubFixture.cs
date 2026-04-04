@@ -20,7 +20,7 @@ public class ChatHubFixture : IAsyncLifetime {
         var connectionMultiplexer = Factory.Services.GetRequiredKeyedService<IConnectionMultiplexer>("valkey");
         foreach (var endpoint in connectionMultiplexer.GetEndPoints()) {
             var server = connectionMultiplexer.GetServer(endpoint);
-            if(!server.IsReplica) {
+            if (!server.IsReplica) {
                 await server.FlushDatabaseAsync(db.Database);
             }
         }

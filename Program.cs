@@ -38,7 +38,8 @@ public class Program {
                 var db = app.Services.GetRequiredService<IDatabase>();
                 app.Logger.LogInformation("Clearing active users from Valkey in Dev...");
                 await db.KeyDeleteAsync("chat:active_users");
-            } else {
+            }
+            else {
                 app.Logger.LogInformation("Skipping Redis active users cleanup outside Dev...");
             }
 

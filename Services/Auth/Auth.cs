@@ -20,6 +20,7 @@ public class CustomUserIdProvider : IUserIdProvider {
 public class AuthService {
     private readonly ECDsaSecurityKey _key;
     private readonly string _issuer;
+    private readonly string _audience;
     private readonly JwtBearerOptions _jwtOptions;
     private readonly ILogger<AuthService> _logger;
 
@@ -28,6 +29,7 @@ public class AuthService {
         ec.ImportFromPem(config.JwtPublicKeyPem);
         this._key = new ECDsaSecurityKey(ec);
         this._issuer = config.JwtIssuer;
+        this._audience = config.JwtAudience;
         this._logger = logger;
 
         this._jwtOptions = new JwtBearerOptions {
@@ -39,7 +41,8 @@ public class AuthService {
                 ValidAlgorithms = new[] { SecurityAlgorithms.EcdsaSha256 },
                 ValidateIssuer = true,
                 ValidIssuer = _issuer,
-                ValidateAudience = false,
+                ValidateAudience = true,
+                ValidAudience = _audience,
                 ValidateLifetime = true,
             },
 

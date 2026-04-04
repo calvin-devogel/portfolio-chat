@@ -5,6 +5,7 @@ namespace PortfolioChat.Services;
 public class ConfigService {
     public readonly string _jwtPublicKeyPem;
     public readonly string _jwtIssuer;
+    public readonly string _jwtAudience;
     public readonly string[] _allowedOrigins;
     public readonly string _redisConnectionString;
     public readonly int _redisDatabaseIndex;
@@ -17,6 +18,7 @@ public class ConfigService {
 
         _jwtPublicKeyPem = jwtPublicKeyPem;
         _jwtIssuer = configuration["Application:JWT_ISSUER"] ?? "portfolio-server";
+        _jwtAudience = configuration["Application:JWT_AUDIENCE"] ?? "portfolio-chat";
         _allowedOrigins = configuration.GetSection("Cors:ALLOWED_ORIGINS").Get<string[]>()
             ?? new[] { "http://localhost:4200", "http://localhost:5173", "http://localhost:8000" };
         _redisConnectionString = configuration["redis_uri"]
@@ -34,6 +36,7 @@ public class ConfigService {
 
     public string JwtPublicKeyPem => _jwtPublicKeyPem;
     public string JwtIssuer => _jwtIssuer;
+    public string JwtAudience => _jwtAudience;
     public string[] AllowedOrigins => _allowedOrigins;
     public string RedisConnectionString => _redisConnectionString;
     public int RedisDatabaseIndex => _redisDatabaseIndex;

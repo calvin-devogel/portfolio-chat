@@ -9,6 +9,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     private const string UsersKey = "chat:active_users";
     private const string MessagesKey = "chat:messages";
     private const int MaxMessages = 100;
+    private const int MaxMessageLength = 500;
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Received message from {UserId} ({UserName}), length={MessageLength}")]
     private partial void LogMessageReceived(string userId, string userName, int messageLength);
@@ -23,6 +24,9 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     private partial void LogUserDisconnectedWithError(string userId);
 
     public async Task SendMessage(string message) {
+        if (string.IsNullOrWhiteSpace(message) || message.Length > MaxMessageLength)
+            return;
+
         var userId = Context.UserIdentifier ?? "Unknown";
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
