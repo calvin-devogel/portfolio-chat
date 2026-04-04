@@ -11,19 +11,15 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
     private const int TestDatabaseIndex = 2;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
-        builder.UseSetting("Redis:ConnectionString", "localhost:6379");
+        builder.UseSetting("redis_uri", "localhost:6379");
         builder.UseSetting("Redis:DatabaseIndex", TestDatabaseIndex.ToString());
 
-        var tempKeyPath = Path.Combine(Path.GetTempPath(), "test-ecdsa-public-key.pem");
-        if (!File.Exists(tempKeyPath)) {
-            using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var pubKeyBytes = ec.ExportSubjectPublicKeyInfo();
-            var pemKey = new string(PemEncoding.Write("PUBLIC KEY", pubKeyBytes));
-            File.WriteAllText(tempKeyPath, pemKey);
-        }
+        using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var pubKeyBytes = ec.ExportSubjectPublicKeyInfo();
+        var pemKey = new string(PemEncoding.Write("PUBLIC KEY", pubKeyBytes));
 
-        builder.UseSetting("Jwt:PublicKeyPath", tempKeyPath);
-        builder.UseSetting("Jwt:Issuer", "test-issuer");
+        builder.UseSetting("Application:JWT_PUBLIC_KEY", pemKey);
+        builder.UseSetting("Application:JWT_ISSUER", "test-issuer");
 
         builder.ConfigureServices(services => {
             services.AddAuthentication(options => {

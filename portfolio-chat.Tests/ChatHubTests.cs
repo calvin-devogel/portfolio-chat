@@ -31,7 +31,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime {
 
         return new HubConnectionBuilder()
             .WithUrl(
-                $"{server.BaseAddress}chathub",
+                $"{server.BaseAddress}ws/chat",
                 options => {
                     options.HttpMessageHandlerFactory = _ => server.CreateHandler();
                     options.AccessTokenProvider = () => Task.FromResult(_testToken);
@@ -43,7 +43,7 @@ public class ChatHubTests : IClassFixture<ChatHubFixture>, IAsyncLifetime {
     public async Task Connect_AddsUserToActiveUsers() {
         var connection = CreateHubConnection("user-1", "Alice");
 
-        // set up a listener to know when the server finishes processing hte connection
+        // set up a listener to know when the server finishes processing the connection
         var connectedTaskCompletionSource = new TaskCompletionSource();
         connection.On<object>("ActiveUsers", _ => connectedTaskCompletionSource.TrySetResult());
 

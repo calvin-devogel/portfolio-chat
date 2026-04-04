@@ -33,9 +33,14 @@ public class Program {
                 options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
 
             var app = builder.Build();
-            var db = app.Services.GetRequiredService<IDatabase>();
-            app.Logger.LogInformation("Clearing active users from Redis...");
-            await db.KeyDeleteAsync("chat:active_users");
+
+            if (app.Environment.IsDevelopment()) {
+                var db = app.Services.GetRequiredService<IDatabase>();
+                app.Logger.LogInformation("Clearing active users from Valkey in Dev...");
+                await db.KeyDeleteAsync("chat:active_users");
+            } else {
+                app.Logger.LogInformation("Skipping Redis active users cleanup outside Dev...");
+            }
 
             app.UseCors("PortfolioPolicy");
             app.UseAuthentication();

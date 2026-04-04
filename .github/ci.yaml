@@ -26,6 +26,16 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -45,7 +55,7 @@ jobs:
   
   docker-build:
     name: Docker Build
-    needs: [format, build, test]
+    needs: [format, build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -76,7 +86,7 @@ jobs:
     name: Deploy
     needs: docker-build
     runs-on: ubuntu-latest
-    if: github.ref === 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - name: Authenticate with DigitalOcean

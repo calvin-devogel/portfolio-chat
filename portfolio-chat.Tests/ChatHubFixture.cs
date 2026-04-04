@@ -17,7 +17,12 @@ public class ChatHubFixture : IAsyncLifetime {
 
     private async Task FlushTestDatabase() {
         var db = Factory.Services.GetRequiredService<IDatabase>();
-        await db.KeyDeleteAsync("chat:active_users");
-        await db.KeyDeleteAsync("chat:messages");
+        var connectionMultiplexer = Factory.Services.GetRequiredKeyedService<IConnectionMultiplexer>("valkey");
+        foreach (var endpoint in connectionMultiplexer.GetEndPoints()) {
+            var server = connectionMultiplexer.GetServer(endpoint);
+            if(!server.IsReplica) {
+                await server.FlushDatabaseAsync(db.Database);
+            }
+        }
     }
 }

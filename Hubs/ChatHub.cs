@@ -42,7 +42,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             ?? throw new InvalidOperationException("UserIdentifier is required for authentication");
         var userName = Context.User?.Identity?.Name ?? "Unknown";
 
-        using (LogContext.PushProperty("UserId", Context.ConnectionId))
+        using (LogContext.PushProperty("ConnectionId", Context.ConnectionId))
         using (LogContext.PushProperty("UserId", userId)) {
             LogUserConnected(userId, userName);
 
