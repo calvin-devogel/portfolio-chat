@@ -1,18 +1,60 @@
-var builder = WebApplication.CreateBuilder(args);
+using StackExchange.Redis;
+using PortfolioChat.Services;
+using Microsoft.AspNetCore.SignalR;
+using Serilog;
+using Serilog.Formatting.Compact;
 
-builder.Services.AddSignalR();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("PortfolioPolicy", policy =>
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials());
-});
+namespace PortfolioChat;
 
-var app = builder.Build();
+public class Program {
+    public static async Task Main(string[] args) {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .CreateBootstrapLogger();
+        try {
+            var builder = WebApplication.CreateBuilder(args);
+            builder.Configuration.AddEnvironmentVariables("APP_");
 
-app.UseCors("PortfolioPolicy");
-app.MapHub<ChatHub>("/chathub");
+            builder.Host.UseSerilog((context, services, configuration) => configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .Enrich.FromLogContext()
+                .WriteTo.Console(new CompactJsonFormatter()));
 
-app.Run();
+            var configService = new ConfigService(builder.Configuration);
+            builder.Services.AddSingleton(configService);
+
+            builder.Services.AddValkeyService(configService);
+            builder.Services.AddAuthService(configService);
+
+            builder.Services.AddAuthorization();
+            builder.Services.AddSignalR();
+            builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+            builder.Services.AddCors(options =>
+                options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
+
+            var app = builder.Build();
+
+            if (app.Environment.IsDevelopment()) {
+                var db = app.Services.GetRequiredService<IDatabase>();
+                app.Logger.LogInformation("Clearing active users from Valkey in Dev...");
+                await db.KeyDeleteAsync("chat:active_users");
+            }
+            else {
+                app.Logger.LogInformation("Skipping Redis active users cleanup outside Dev...");
+            }
+
+            app.UseCors("PortfolioPolicy");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapHub<ChatHub>("/ws/chat");
+
+            app.Run();
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Application terminated unexpectedly");
+        }
+        finally {
+            await Log.CloseAndFlushAsync();
+        }
+    }
+}

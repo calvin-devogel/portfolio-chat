@@ -1,0 +1,33 @@
+#!/bin/sh
+RED='\033[31m'
+YELLOW='\033[33m'
+GREEN='\033[32m'
+RESET='\033[0m'
+
+fail() {
+    printf "${RED}✗${RESET} %s failed. Push aborted." "$1" >&2
+    exit 1
+}
+
+current_branch=$(git symbolic-ref --short HEAD)
+
+if [[ $current_branch != "main" && $current_branch != "dev" ]]; then
+    exit 0
+else
+    echo "\n→ Formatting...\n"
+    dotnet format portfolio-chat.slnx --verify-no-changes || fail "Formatting"
+
+    echo "\n→ Linting...\n"
+    dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true || fail "Linting"
+
+    echo "\n→ Running tests...\n"
+    dotnet test portfolio-chat.slnx --no-build || fail "Tests"
+
+    echo "\n→ Auditing dependencies...\n"
+    dotnet list package --vulnerable --include-transitive || echo "\n${YELLOW}⚠${RESET} Audit found vulnerabilities (non-blocking).\n" >&2
+
+    echo "\n→ Looking for unused references...\n"
+    dotnet build portfolio-chat.slnx /p:TreatWarningsAsErrors=true /p:EnforceCodeStyleInBuild=true || fail "Unused references"
+
+    echo "\n${GREEN}✓${RESET} Pre-push checks passed.\n"
+fi
