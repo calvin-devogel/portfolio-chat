@@ -1,4 +1,4 @@
-name: container
+name: CI
 
 on:
   push:
