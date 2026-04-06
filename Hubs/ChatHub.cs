@@ -45,13 +45,14 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
         if (_messageCache != null) {
             await _cacheLock.WaitAsync();
             try {
-                if(_messageCache != null) {
+                if (_messageCache != null) {
                     _messageCache.Add(new ChatMessagePayload(userId, userName, message, timestamp));
                     if (_messageCache.Count > MaxMessages) {
                         _messageCache.RemoveAt(0); // evict
                     }
                 }
-            } finally {
+            }
+            finally {
                 _cacheLock.Release();
             }
         }
@@ -89,7 +90,8 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
                 }
 
                 replayMessages = _messageCache.ToList();
-            } finally {
+            }
+            finally {
                 _cacheLock.Release();
             }
 
