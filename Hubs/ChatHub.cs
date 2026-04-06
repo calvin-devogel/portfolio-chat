@@ -10,6 +10,10 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     private const string MessagesKey = "chat:messages";
     private const int MaxMessages = 100;
     private const int MaxMessageLength = 500;
+    public record ChatMessagePayload(string userId, string username, string text, long timestamp);
+
+    private static List<ChatMessagePayload>? _messageCache;
+    private static readonly SemaphoreSlim _cacheLock = new(1, 1);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Received message from {UserId} ({UserName}), length={MessageLength}")]
     private partial void LogMessageReceived(string userId, string userName, int messageLength);
@@ -38,6 +42,20 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
         await redis.ListLeftPushAsync(MessagesKey, payload);
         await redis.ListTrimAsync(MessagesKey, 0, MaxMessages - 1);
 
+        if (_messageCache != null) {
+            await _cacheLock.WaitAsync();
+            try {
+                if(_messageCache != null) {
+                    _messageCache.Add(new ChatMessagePayload(userId, userName, message, timestamp));
+                    if (_messageCache.Count > MaxMessages) {
+                        _messageCache.RemoveAt(0); // evict
+                    }
+                }
+            } finally {
+                _cacheLock.Release();
+            }
+        }
+
         await Clients.All.SendAsync("ReceiveMessage", userId, userName, message, timestamp);
     }
 
@@ -58,13 +76,24 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             await Clients.Caller.SendAsync("ActiveUsers", activeUsers);
             await Clients.Others.SendAsync("UserJoined", userId, userName);
 
-            var history = await redis.ListRangeAsync(MessagesKey, 0, MaxMessages - 1);
-            var replayMessages = history
-                .Select(m => JsonSerializer.Deserialize<object>((string)m!))
-                .Reverse()
-                .ToList();
-            await Clients.Caller.SendAsync("MessageHistory", replayMessages);
+            List<ChatMessagePayload> replayMessages;
+            await _cacheLock.WaitAsync();
+            try {
+                if (_messageCache == null) {
+                    var history = await redis.ListRangeAsync(MessagesKey, 0, MaxMessages - 1);
+                    _messageCache = [.. history
+                        .Select(m => JsonSerializer.Deserialize<ChatMessagePayload>((byte[])m!))
+                        .Where(m => m is not null) // Filter out any nulls
+                        .Select(m => m!) // Satisfy compiler
+                        .Reverse()];
+                }
 
+                replayMessages = _messageCache.ToList();
+            } finally {
+                _cacheLock.Release();
+            }
+
+            await Clients.Caller.SendAsync("MessageHistory", replayMessages);
             await base.OnConnectedAsync();
         }
     }
