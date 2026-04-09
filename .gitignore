@@ -57,3 +57,4 @@ nunit-*.xml
 # project-specific
 *.pem
 .envrc
+*.lscache
