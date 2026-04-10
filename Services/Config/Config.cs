@@ -20,16 +20,16 @@ public class ConfigService {
         _jwtIssuer = configuration["Application:JWT_ISSUER"] ?? "portfolio-server";
         _jwtAudience = configuration["Application:JWT_AUDIENCE"] ?? "portfolio-chat";
         _allowedOrigins = configuration.GetSection("Cors:ALLOWED_ORIGINS").Get<string[]>()
-            ?? new[] { "http://localhost:4200", "http://localhost:5173", "http://localhost:8000" };
+            ?? throw new InvalidOperationException("APP_CORS__ALLOWED_ORIGINS configuration is required");
         _redisConnectionString = configuration["redis_uri"]
             ?? throw new InvalidOperationException("APP_REDIS_URI is required");
-        _redisDatabaseIndex = configuration.GetValue<int>("Redis:DatabaseIndex", 1);
+        _redisDatabaseIndex = configuration.GetValue("Redis:DatabaseIndex", 1);
 
         _corsOptions = new CorsOptions();
         _corsOptions.AddPolicy("PortfolioPolicy", policy =>
             policy.WithOrigins(_allowedOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
+                .WithMethods("GET", "POST")
+                .WithHeaders("Authorization", "Content-Type")
                 .AllowCredentials());
 
     }
