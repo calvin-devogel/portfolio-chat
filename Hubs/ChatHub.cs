@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using Serilog.Context;
+using Prometheus;
 
 [Authorize]
 public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
@@ -14,6 +15,12 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
 
     private static List<ChatMessagePayload>? _messageCache;
     private static readonly SemaphoreSlim _cacheLock = new(1, 1);
+    
+    private static readonly Counter MessagesSent = Metrics
+        .CreateCounter("portfolio_chat_messages_total", "Total chat messages sent");
+    
+    private static readonly Gauge ActiveConnections = Metrics
+        .CreateGauge("portfolio_chat_active_connections", "Current active SignalR connections");
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Received message from {UserId} ({UserName}), length={MessageLength}")]
     private partial void LogMessageReceived(string userId, string userName, int messageLength);
@@ -27,9 +34,16 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     [LoggerMessage(Level = LogLevel.Error, Message = "User disconnected with error: {UserId}")]
     private partial void LogUserDisconnectedWithError(string userId);
 
+    static ChatHub() {
+        ActiveConnections.Set(0);
+        _ = MessagesSent;
+    }
+
     public async Task SendMessage(string message) {
         if (string.IsNullOrWhiteSpace(message) || message.Length > MaxMessageLength)
             return;
+        
+        MessagesSent.Inc();
 
         var userId = Context.UserIdentifier ?? "Unknown";
         var userName = Context.User?.Identity?.Name ?? "Unknown";
@@ -69,6 +83,8 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
         using (LogContext.PushProperty("UserId", userId)) {
             LogUserConnected(userId, userName);
 
+            ActiveConnections.Inc();
+
             await redis.SetAddAsync($"chat:active_users:{userId}", Context.ConnectionId);
             await redis.HashSetAsync(UsersKey, userId, userName);
 
@@ -107,6 +123,8 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             LogUserDisconnectedWithError(userId);
         else
             LogUserDisconnected(userId);
+
+        ActiveConnections.Dec();
 
         await redis.SetRemoveAsync($"chat:active_users:{userId}", Context.ConnectionId);
         var remaining = await redis.SetLengthAsync($"chat:active_users:{userId}");

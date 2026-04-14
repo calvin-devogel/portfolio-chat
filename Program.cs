@@ -3,6 +3,8 @@ using PortfolioChat.Services;
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using Serilog.Formatting.Compact;
+using Prometheus;
+using System.Runtime.CompilerServices;
 
 namespace PortfolioChat;
 
@@ -33,6 +35,7 @@ public class Program {
                 options.AddPolicy("PortfolioPolicy", configService.GetCorsPolicy("PortfolioPolicy")));
 
             var app = builder.Build();
+            RuntimeHelpers.RunClassConstructor(typeof(ChatHub).TypeHandle);
 
             if (app.Environment.IsDevelopment()) {
                 var db = app.Services.GetRequiredService<IDatabase>();
@@ -46,6 +49,8 @@ public class Program {
             app.UseCors("PortfolioPolicy");
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseHttpMetrics();
+            app.MapMetrics();
             app.MapHub<ChatHub>("/ws/chat");
 
             app.Run();
