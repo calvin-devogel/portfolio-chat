@@ -86,6 +86,7 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
             ActiveConnections.Inc();
 
             await redis.SetAddAsync($"chat:active_users:{userId}", Context.ConnectionId);
+            await redis.KeyExpireAsync($"chat:active_users:{userId}", TimeSpan.FromMinutes(15));
             await redis.HashSetAsync(UsersKey, userId, userName);
 
             var entries = await redis.HashGetAllAsync(UsersKey);
