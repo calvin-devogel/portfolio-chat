@@ -25,7 +25,7 @@ public class Program {
             var configService = new ConfigService(builder.Configuration);
             builder.Services.AddSingleton(configService);
 
-            builder.Services.AddValkeyService(configService);
+            var chatEnabled = await builder.Services.TryAddValkeyService(configService);
             builder.Services.AddAuthService(configService);
 
             builder.Services.AddAuthorization();
@@ -37,13 +37,16 @@ public class Program {
             var app = builder.Build();
             RuntimeHelpers.RunClassConstructor(typeof(ChatHub).TypeHandle);
 
-            if (app.Environment.IsDevelopment()) {
+            if (chatEnabled && app.Environment.IsDevelopment()) {
                 var db = app.Services.GetRequiredService<IDatabase>();
                 app.Logger.LogInformation("Clearing active users from Valkey in Dev...");
                 await db.KeyDeleteAsync("chat:active_users");
             }
-            else {
+            else if (chatEnabled) {
                 app.Logger.LogInformation("Skipping Redis active users cleanup outside Dev...");
+            }
+            else {
+                app.Logger.LogWarning("Chat endpoints are disabled because Valkey is unavailable");
             }
 
             app.UseCors("PortfolioPolicy");
@@ -51,7 +54,18 @@ public class Program {
             app.UseAuthorization();
             app.UseHttpMetrics();
             app.MapMetrics();
-            app.MapHub<ChatHub>("/ws/chat");
+            if (chatEnabled) {
+                app.MapHub<ChatHub>("/ws/chat");
+            }
+            else {
+                app.Map("/ws/chat", chatApp => chatApp.Run(async context => {
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    await context.Response.WriteAsJsonAsync(new {
+                        code = "feature_unavailable",
+                        message = "Chat is temporarily unavailable because session storage is offline."
+                    });
+                }));
+            }
 
             app.Run();
         }
