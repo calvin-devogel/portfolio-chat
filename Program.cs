@@ -10,17 +10,23 @@ namespace PortfolioChat;
 
 public class Program {
     public static async Task Main(string[] args) {
-        Log.Logger = new LoggerConfiguration()
+        using var bootstrapLogger = new LoggerConfiguration()
             .WriteTo.Console()
-            .CreateBootstrapLogger();
+            .CreateLogger();
         try {
             var builder = WebApplication.CreateBuilder(args);
+            var redisUriSetting = builder.Configuration["redis_uri"];
             builder.Configuration.AddEnvironmentVariables("APP_");
+            // Preserve explicit host settings, such as the test factory's unavailable endpoint.
+            if (redisUriSetting is not null) {
+                builder.Configuration["redis_uri"] = redisUriSetting;
+            }
 
             builder.Host.UseSerilog((context, services, configuration) => configuration
                 .ReadFrom.Configuration(context.Configuration)
                 .Enrich.FromLogContext()
-                .WriteTo.Console(new CompactJsonFormatter()));
+                .WriteTo.Console(new CompactJsonFormatter()),
+                preserveStaticLogger: true);
 
             var configService = new ConfigService(builder.Configuration);
             builder.Services.AddSingleton(configService);
@@ -70,10 +76,7 @@ public class Program {
             app.Run();
         }
         catch (Exception ex) {
-            Log.Fatal(ex, "Application terminated unexpectedly");
-        }
-        finally {
-            await Log.CloseAndFlushAsync();
+            bootstrapLogger.Fatal(ex, "Application terminated unexpectedly");
         }
     }
 }
