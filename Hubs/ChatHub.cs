@@ -15,13 +15,11 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
 
     private static List<ChatMessagePayload>? _messageCache;
     private static readonly SemaphoreSlim _cacheLock = new(1, 1);
-    
     private static readonly Counter MessagesSent = Metrics
         .CreateCounter("portfolio_chat_messages_total", "Total chat messages sent");
-    
+
     private static readonly Gauge ActiveConnections = Metrics
         .CreateGauge("portfolio_chat_active_connections", "Current active SignalR connections");
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Received message from {UserId} ({UserName}), length={MessageLength}")]
     private partial void LogMessageReceived(string userId, string userName, int messageLength);
 
@@ -42,9 +40,8 @@ public partial class ChatHub(IDatabase redis, ILogger<ChatHub> logger) : Hub {
     public async Task SendMessage(string message) {
         if (string.IsNullOrWhiteSpace(message) || message.Length > MaxMessageLength)
             return;
-        
-        MessagesSent.Inc();
 
+        MessagesSent.Inc();
         var userId = Context.UserIdentifier ?? "Unknown";
         var userName = Context.User?.Identity?.Name ?? "Unknown";
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
