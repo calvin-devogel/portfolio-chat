@@ -9,9 +9,19 @@ namespace portfolio_chat.Tests;
 
 public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Program> {
     private const int TestDatabaseIndex = 2;
+    private readonly string _redisConnectionString;
+    private readonly bool _overrideRedis;
+
+    public ChatWebApplicationFactory(
+        string redisConnectionString = "localhost:6379,allowAdmin=true",
+        bool overrideRedis = true
+    ) {
+        _redisConnectionString = redisConnectionString;
+        _overrideRedis = overrideRedis;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
-        builder.UseSetting("redis_uri", "localhost:6379");
+        builder.UseSetting("redis_uri", _redisConnectionString);
         builder.UseSetting("Redis:DatabaseIndex", TestDatabaseIndex.ToString());
 
         using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -28,19 +38,21 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
             }).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
                 TestAuthHandler.SchemeName, _ => { });
 
-            var redisDescriptors = services
-                .Where(d => d.ServiceType == typeof(IConnectionMultiplexer)
-                    || d.ServiceType == typeof(IDatabase))
-                .ToList();
+            if (_overrideRedis) {
+                var redisDescriptors = services
+                    .Where(d => d.ServiceType == typeof(IConnectionMultiplexer)
+                        || d.ServiceType == typeof(IDatabase))
+                    .ToList();
 
-            foreach (var d in redisDescriptors)
-                services.Remove(d);
+                foreach (var d in redisDescriptors)
+                    services.Remove(d);
 
-            services.AddSingleton<IConnectionMultiplexer>(
-                ConnectionMultiplexer.Connect("localhost:6379,allowAdmin=true"));
-            services.AddSingleton(sp =>
-                sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(TestDatabaseIndex)
-            );
+                services.AddSingleton<IConnectionMultiplexer>(
+                    ConnectionMultiplexer.Connect("localhost:6379,allowAdmin=true"));
+                services.AddSingleton(sp =>
+                    sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(TestDatabaseIndex)
+                );
+            }
         });
     }
 }
