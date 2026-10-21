@@ -31,6 +31,20 @@ public class ChatWebApplicationFactory : WebApplicationFactory<PortfolioChat.Pro
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             }).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
                 TestAuthHandler.SchemeName, _ => { });
+
+            var redisDescriptors = services
+                .Where(d => d.ServiceType == typeof(IConnectionMultiplexer)
+                    || d.ServiceType == typeof(IDatabase))
+                .ToList();
+
+            foreach (var d in redisDescriptors)
+                services.Remove(d);
+
+            services.AddSingleton<IConnectionMultiplexer>(
+                ConnectionMultiplexer.Connect("localhost:6379,allowAdmin=true"));
+            services.AddSingleton(sp =>
+                sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase(TestDatabaseIndex)
+            );
         });
     }
 }
