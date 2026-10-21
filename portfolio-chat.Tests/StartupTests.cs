@@ -6,7 +6,8 @@ public class StartupTests {
     [Fact]
     public async Task StartsAndDisablesChatWhenValkeyIsUnavailable() {
         await using var factory = new ChatWebApplicationFactory(
-            "localhost:1,connectTimeout=250,connectRetry=0");
+            "localhost:1,connectTimeout=250,connectRetry=0",
+            overrideRedis: false);
         using var client = factory.CreateClient();
 
         using var response = await client.PostAsync(
